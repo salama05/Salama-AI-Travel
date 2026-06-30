@@ -242,6 +242,12 @@ export async function performCheckIn(
 
   if (bookingUpdateError) {
     console.error('[performCheckIn] Booking seat update failed:', bookingUpdateError);
+    if (bookingUpdateError.code === '23505') {
+      return {
+        success: false,
+        error: `Seat ${seatNumber} was just taken by another passenger. Please select a different seat.`,
+      };
+    }
     return { success: false, error: 'Failed to assign seat. Please try again.' };
   }
 

@@ -61,6 +61,9 @@ create policy "Users can create their own bookings" on public.bookings
 create policy "Users can update their own bookings" on public.bookings
   for update using (auth.uid() = user_id);
 
+alter table public.bookings
+  add constraint unique_flight_seat unique (flight_id, seat_number);
+
 -- ==========================================
 -- 4. SUPPORT TICKETS SCHEMA (Support anomalies log)
 -- ==========================================
