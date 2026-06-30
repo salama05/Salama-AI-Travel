@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #030008;
+  --color-foreground: #f5f3f7;
+  --color-cyber-black: #06030c;
+  --color-cyber-dark: #0f0a1c;
+  --color-cyber-gray: #1b1429;
+  --color-cyber-cyan: #00f0ff;
+  --color-cyber-pink: #ff007f;
+  --color-cyber-purple: #9d4edd;
+  --color-cyber-green: #39ff14;
+  
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+}
+
+:root {
+  background-color: #030008;
+  color: #f5f3f7;
+  color-scheme: dark;
+}
+
+body {
+  background-color: #030008;
+  color: #f5f3f7;
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Custom cyber-synth decorative grid background */
+.cyber-grid {
+  background-image: 
+    linear-gradient(to right, rgba(157, 78, 221, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(157, 78, 221, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Neon glow helper classes */
+.glow-cyan {
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+}
+
+.glow-pink {
+  box-shadow: 0 0 15px rgba(255, 0, 127, 0.4);
+}
+
+.glow-purple {
+  box-shadow: 0 0 15px rgba(157, 78, 221, 0.4);
+}
+
+.text-glow-cyan {
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+}
+
+.text-glow-pink {
+  text-shadow: 0 0 8px rgba(255, 0, 127, 0.6);
+}
+
+/* Cyber card glassmorphism style */
+.cyber-panel {
+  background: rgba(15, 10, 28, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 240, 255, 0.15);
+  box-shadow: 0 8px 32px 0 rgba(3, 0, 8, 0.5);
+}
+
+.cyber-panel-pink {
+  background: rgba(15, 10, 28, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 0, 127, 0.15);
+  box-shadow: 0 8px 32px 0 rgba(3, 0, 8, 0.5);
+}
+
+/* Neon custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(6, 3, 12, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #9d4edd;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ff007f;
+}
+
+/* Animated scanner line effect */
+@keyframes scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.cyber-scanner {
+  position: relative;
+  overflow: hidden;
+}
+
+.cyber-scanner::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #00f0ff, transparent);
+  animation: scan 3s linear infinite;
+  z-index: 10;
+}
