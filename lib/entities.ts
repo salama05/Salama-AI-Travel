@@ -44,7 +44,7 @@ export interface ETicketEntity {
   bookingId: string;
   userId: string;
   qrData: string;
-  status: 'valid' | 'boarded' | 'scanned' | 'invalid';
+  status: 'valid' | 'active' | 'boarded' | 'scanned' | 'invalid';
   createdAt: string;
   // Included via joins for the boarding pass UI
   bookingReference?: string;

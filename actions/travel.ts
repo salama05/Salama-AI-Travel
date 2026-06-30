@@ -1,7 +1,11 @@
 'use server';
 
-import { createClientServer } from '@/lib/supabase';
+import { createClientServer, createServiceRoleClient } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
+import { redis } from '@/lib/redis';
+
+// ─── 24-hour window constant ──────────────────────────────────────────────────
+const CHECKIN_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
 export async function searchFlights(from: string, to: string, date?: string) {
   const supabase = await createClientServer();
@@ -118,6 +122,103 @@ export async function getUserETickets() {
   }
   
   return data || [];
+}
+
+export async function performCheckIn(ticketId: string): Promise<
+  | { success: true }
+  | { success: false; error: string }
+> {
+  // ─── 1. Auth guard ──────────────────────────────────────────────────────────
+  const supabase = await createClientServer();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  // ─── 2. Fetch ticket (with flight departure time for validation) ─────────────
+  const serviceClient = createServiceRoleClient();
+  const { data: ticket, error: fetchError } = await serviceClient
+    .from('e_tickets')
+    .select(`
+      id,
+      status,
+      user_id,
+      bookings (
+        id,
+        flights ( departure_time )
+      )
+    `)
+    .eq('id', ticketId)
+    .single();
+
+  if (fetchError || !ticket) {
+    return { success: false, error: 'Ticket not found.' };
+  }
+
+  // ─── 3. Ownership check — prevent checking in another user's ticket ──────────
+  if (ticket.user_id !== user.id) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  // ─── 4. Status check — only 'valid' tickets can be checked in ───────────────
+  if (ticket.status !== 'valid') {
+    const msg =
+      ticket.status === 'active'
+        ? 'You have already completed online check-in for this flight.'
+        : ticket.status === 'boarded'
+        ? 'This ticket has already been used for boarding.'
+        : 'This ticket is no longer valid for check-in.';
+    return { success: false, error: msg };
+  }
+
+  // ─── 5. SERVER-SIDE 24-hour window guard (prevents any frontend bypass) ──────
+  const booking = Array.isArray(ticket.bookings) ? ticket.bookings[0] : ticket.bookings;
+  const flight = booking
+    ? (Array.isArray(booking.flights) ? booking.flights[0] : booking.flights)
+    : null;
+
+  if (!flight?.departure_time) {
+    return { success: false, error: 'Could not retrieve flight departure time.' };
+  }
+
+  const now = Date.now();
+  const departure = new Date(flight.departure_time).getTime();
+  const msUntilDeparture = departure - now;
+
+  if (msUntilDeparture <= 0) {
+    return { success: false, error: 'This flight has already departed. Check-in is closed.' };
+  }
+
+  if (msUntilDeparture > CHECKIN_WINDOW_MS) {
+    const hoursLeft = Math.floor(msUntilDeparture / (1000 * 60 * 60));
+    return {
+      success: false,
+      error: `Online check-in opens 24 hours before departure. Opens in approximately ${hoursLeft} hours.`,
+    };
+  }
+
+  // ─── 6. Transition: valid → active ──────────────────────────────────────────
+  const { error: updateError } = await serviceClient
+    .from('e_tickets')
+    .update({ status: 'active' })
+    .eq('id', ticketId);
+
+  if (updateError) {
+    console.error('[performCheckIn] Supabase update failed:', updateError);
+    return { success: false, error: 'Check-in failed due to a server error. Please try again.' };
+  }
+
+  // ─── 7. Redis sync — update the ticket status key so AI agent stays current ──
+  try {
+    await redis.hset(`eticket:${ticketId}`, 'status', 'active', 'checked_in_at', new Date().toISOString());
+    await redis.expire(`eticket:${ticketId}`, 60 * 60 * 48); // TTL: 48h
+  } catch (redisErr) {
+    // Non-fatal: Supabase is the source of truth, Redis is a cache
+    console.error('[performCheckIn] Redis sync failed (non-fatal):', redisErr);
+  }
+
+  revalidatePath('/e-tickets');
+  return { success: true };
 }
 
 export async function createTicket(subject: string, description: string) {
