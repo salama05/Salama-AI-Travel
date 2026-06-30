@@ -192,6 +192,31 @@ export function CheckInModal({ ticketId, flightId, isOpen, onClose, onSuccess }:
                             const isOccupied = occupiedSeats.includes(seatId);
                             const isSelected = selectedSeat === seatId;
                             
+                            // Determine seat class color scheme
+                            const isFirstClass = rowNum <= 2;
+                            const isBusinessClass = rowNum === 3 || rowNum === 4;
+                            
+                            let seatStyles = '';
+                            if (isOccupied) {
+                              seatStyles = 'bg-white/5 text-white/10 border border-white/5 cursor-not-allowed';
+                            } else if (isSelected) {
+                              if (isFirstClass) {
+                                seatStyles = 'bg-cyber-pink text-black border-2 border-cyber-pink shadow-[0_0_10px_rgba(255,0,127,0.5)]';
+                              } else if (isBusinessClass) {
+                                seatStyles = 'bg-cyber-purple text-white border-2 border-cyber-purple shadow-[0_0_10px_rgba(157,78,221,0.5)]';
+                              } else {
+                                seatStyles = 'bg-cyber-cyan text-black border-2 border-cyber-cyan shadow-[0_0_10px_rgba(0,240,255,0.5)]';
+                              }
+                            } else {
+                              if (isFirstClass) {
+                                seatStyles = 'border border-cyber-pink/30 text-cyber-pink hover:bg-cyber-pink/10 hover:border-cyber-pink';
+                              } else if (isBusinessClass) {
+                                seatStyles = 'border border-cyber-purple/30 text-cyber-purple hover:bg-cyber-purple/10 hover:border-cyber-purple';
+                              } else {
+                                seatStyles = 'border border-cyber-cyan/30 text-cyber-cyan hover:bg-cyber-cyan/10 hover:border-cyber-cyan';
+                              }
+                            }
+
                             return (
                               <button
                                 key={seatId}
@@ -199,14 +224,8 @@ export function CheckInModal({ ticketId, flightId, isOpen, onClose, onSuccess }:
                                 onClick={() => setSelectedSeat(seatId)}
                                 className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-bold font-mono transition-all cursor-pointer ${
                                   letterIdx === 3 ? 'ml-4' : ''
-                                } ${
-                                  isOccupied
-                                    ? 'bg-white/5 text-white/10 border border-white/5 cursor-not-allowed'
-                                    : isSelected
-                                    ? 'bg-primary text-primary-foreground border-2 border-primary shadow-[0_0_10px_rgba(var(--primary),0.5)]'
-                                    : 'border border-primary/30 text-primary hover:bg-primary/10 hover:border-primary'
-                                }`}
-                                title={isOccupied ? `Seat ${seatId} (Booked)` : `Seat ${seatId}`}
+                                } ${seatStyles}`}
+                                title={`${seatId} (${isFirstClass ? 'First Class' : isBusinessClass ? 'Business Class' : 'Economy'}) ${isOccupied ? '- Booked' : ''}`}
                               >
                                 <Armchair size={12} />
                               </button>
@@ -218,10 +237,16 @@ export function CheckInModal({ ticketId, flightId, isOpen, onClose, onSuccess }:
                   </div>
 
                   {/* Seat Legend */}
-                  <div className="flex gap-4 mt-4 text-xs font-mono">
-                    <div className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded border border-primary/30 flex items-center justify-center text-primary"><Armchair size={8} /></span> Available</div>
-                    <div className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded bg-white/5 border border-white/5 text-white/20 flex items-center justify-center"><Armchair size={8} /></span> Booked</div>
-                    <div className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded bg-primary text-primary-foreground flex items-center justify-center"><Armchair size={8} /></span> Selected</div>
+                  <div className="flex flex-col gap-2 mt-4 text-xs font-mono w-full max-w-sm px-4">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded border border-cyber-pink/30 flex items-center justify-center text-cyber-pink"><Armchair size={8} /></span> First Class</div>
+                      <div className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded border border-cyber-purple/30 flex items-center justify-center text-cyber-purple"><Armchair size={8} /></span> Business</div>
+                      <div className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded border border-cyber-cyan/30 flex items-center justify-center text-cyber-cyan"><Armchair size={8} /></span> Economy</div>
+                    </div>
+                    <div className="flex justify-center gap-4 border-t border-white/5 pt-2">
+                      <div className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded bg-white/5 border border-white/5 text-white/20 flex items-center justify-center"><Armchair size={8} /></span> Booked / Occupied</div>
+                      <div className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded bg-primary text-primary-foreground flex items-center justify-center"><Armchair size={8} /></span> Selected</div>
+                    </div>
                   </div>
                 </div>
               )}
