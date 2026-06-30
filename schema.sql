@@ -105,9 +105,11 @@ values
   ('AR-101', 'Aether Airways', 'LAX', 'HND', now() + interval '2 days', now() + interval '2 days 11 hours', 850.00, 'scheduled'),
   ('AR-204', 'Neo-Tokyo Shuttles', 'SFO', 'HND', now() + interval '3 days 4 hours', now() + interval '3 days 15 hours', 920.00, 'scheduled'),
   ('AR-502', 'Nebula Jetstreams', 'JFK', 'LHR', now() + interval '1 day 8 hours', now() + interval '1 day 15 hours', 540.00, 'scheduled'),
-  ('AR-909', 'Cybernetic Air', 'DXB', 'CDG', now() + interval '4 days', now() + interval '4 days 7 hours', 710.00, 'scheduled')
+  ('AR-909', 'Cybernetic Air', 'DXB', 'CDG', now() + interval '4 days', now() + interval '4 days 7 hours', 710.00, 'scheduled'),
+  ('AR-303', 'Aura Jet', 'LAX', 'SFO', now() + interval '12 hours', now() + interval '13 hours 30 minutes', 150.00, 'scheduled')
 on conflict (flight_number) do update set
   departure_time = excluded.departure_time,
+  arrival_time = excluded.arrival_time,
   price = excluded.price;
 
 -- ==========================================
