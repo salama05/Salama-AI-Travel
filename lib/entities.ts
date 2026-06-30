@@ -46,6 +46,8 @@ export interface ETicketEntity {
   qrData: string;
   status: 'valid' | 'active' | 'boarded' | 'scanned' | 'invalid';
   createdAt: string;
+  passportNumber?: string | null;
+  passportExpiry?: string | null;
   // Included via joins for the boarding pass UI
   bookingReference?: string;
   seatNumber?: string | null;
@@ -148,6 +150,8 @@ export function mapETicket(
     qrData: String(row.qr_data),
     status: (row.status as ETicketEntity['status']) ?? 'valid',
     createdAt: String(row.created_at),
+    passportNumber: row.passport_number ? String(row.passport_number) : null,
+    passportExpiry: row.passport_expiry ? String(row.passport_expiry) : null,
     bookingReference: bookingRow ? String(bookingRow.booking_reference) : undefined,
     seatNumber: bookingRow?.seat_number ? String(bookingRow.seat_number) : null,
     flight: flightRow ? mapFlight(flightRow) : undefined,

@@ -119,6 +119,8 @@ create table public.e_tickets (
   user_id uuid references public.profiles(id) on delete cascade not null,
   qr_data text not null,
   status text default 'valid' not null,
+  passport_number text,
+  passport_expiry text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

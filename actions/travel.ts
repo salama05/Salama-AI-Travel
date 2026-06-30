@@ -124,18 +124,47 @@ export async function getUserETickets() {
   return data || [];
 }
 
-export async function performCheckIn(ticketId: string): Promise<
-  | { success: true }
-  | { success: false; error: string }
-> {
-  // ─── 1. Auth guard ──────────────────────────────────────────────────────────
+export async function getFlightOccupiedSeats(flightId: string): Promise<string[]> {
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('seat_number')
+    .eq('flight_id', flightId)
+    .not('status', 'eq', 'cancelled');
+
+  if (error || !data) {
+    console.error('Error fetching occupied seats:', error);
+    return [];
+  }
+
+  return data.map((b) => b.seat_number).filter(Boolean) as string[];
+}
+
+export async function performCheckIn(
+  ticketId: string,
+  passportNumber: string,
+  passportExpiry: string,
+  seatNumber: string
+): Promise<{ success: true } | { success: false; error: string }> {
+  // ─── 1. Validation ──────────────────────────────────────────────────────────
+  if (!passportNumber.trim()) {
+    return { success: false, error: 'Passport number is required.' };
+  }
+  if (!passportExpiry.trim()) {
+    return { success: false, error: 'Passport expiry date is required.' };
+  }
+  if (!seatNumber.trim()) {
+    return { success: false, error: 'Seat selection is required.' };
+  }
+
+  // ─── 2. Auth guard ──────────────────────────────────────────────────────────
   const supabase = await createClientServer();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     return { success: false, error: 'Unauthorized' };
   }
 
-  // ─── 2. Fetch ticket (with flight departure time for validation) ─────────────
+  // ─── 3. Fetch ticket ────────────────────────────────────────────────────────
   const serviceClient = createServiceRoleClient();
   const { data: ticket, error: fetchError } = await serviceClient
     .from('e_tickets')
@@ -145,6 +174,7 @@ export async function performCheckIn(ticketId: string): Promise<
       user_id,
       bookings (
         id,
+        flight_id,
         flights ( departure_time )
       )
     `)
@@ -155,12 +185,12 @@ export async function performCheckIn(ticketId: string): Promise<
     return { success: false, error: 'Ticket not found.' };
   }
 
-  // ─── 3. Ownership check — prevent checking in another user's ticket ──────────
+  // ─── 4. Ownership check ─────────────────────────────────────────────────────
   if (ticket.user_id !== user.id) {
     return { success: false, error: 'Unauthorized' };
   }
 
-  // ─── 4. Status check — only 'valid' tickets can be checked in ───────────────
+  // ─── 5. Status check ────────────────────────────────────────────────────────
   if (ticket.status !== 'valid') {
     const msg =
       ticket.status === 'active'
@@ -171,16 +201,16 @@ export async function performCheckIn(ticketId: string): Promise<
     return { success: false, error: msg };
   }
 
-  // ─── 5. SERVER-SIDE 24-hour window guard (prevents any frontend bypass) ──────
   const booking = Array.isArray(ticket.bookings) ? ticket.bookings[0] : ticket.bookings;
   const flight = booking
     ? (Array.isArray(booking.flights) ? booking.flights[0] : booking.flights)
     : null;
 
-  if (!flight?.departure_time) {
+  if (!booking || !flight?.departure_time) {
     return { success: false, error: 'Could not retrieve flight departure time.' };
   }
 
+  // ─── 6. Time window check ───────────────────────────────────────────────────
   const now = Date.now();
   const departure = new Date(flight.departure_time).getTime();
   const msUntilDeparture = departure - now;
@@ -197,23 +227,52 @@ export async function performCheckIn(ticketId: string): Promise<
     };
   }
 
-  // ─── 6. Transition: valid → active ──────────────────────────────────────────
-  const { error: updateError } = await serviceClient
-    .from('e_tickets')
-    .update({ status: 'active' })
-    .eq('id', ticketId);
-
-  if (updateError) {
-    console.error('[performCheckIn] Supabase update failed:', updateError);
-    return { success: false, error: 'Check-in failed due to a server error. Please try again.' };
+  // ─── 7. Seat availability double-check (prevent race condition/bypass) ──────
+  const occupiedSeats = await getFlightOccupiedSeats(booking.flight_id);
+  if (occupiedSeats.includes(seatNumber)) {
+    return { success: false, error: `Seat ${seatNumber} is already occupied. Please select another seat.` };
   }
 
-  // ─── 7. Redis sync — update the ticket status key so AI agent stays current ──
+  // ─── 8. DB Transaction / Sequence ──────────────────────────────────────────
+  // A. Update booking with the selected seat
+  const { error: bookingUpdateError } = await serviceClient
+    .from('bookings')
+    .update({ seat_number: seatNumber })
+    .eq('id', booking.id);
+
+  if (bookingUpdateError) {
+    console.error('[performCheckIn] Booking seat update failed:', bookingUpdateError);
+    return { success: false, error: 'Failed to assign seat. Please try again.' };
+  }
+
+  // B. Update e-ticket with status and passport details
+  const { error: ticketUpdateError } = await serviceClient
+    .from('e_tickets')
+    .update({
+      status: 'active',
+      passport_number: passportNumber,
+      passport_expiry: passportExpiry,
+    })
+    .eq('id', ticketId);
+
+  if (ticketUpdateError) {
+    console.error('[performCheckIn] Ticket check-in update failed:', ticketUpdateError);
+    // Revert the seat booking just in case
+    await serviceClient.from('bookings').update({ seat_number: null }).eq('id', booking.id);
+    return { success: false, error: 'Check-in failed. Please try again.' };
+  }
+
+  // ─── 9. Redis sync — update ticket status and seat ─────────────────────────
   try {
-    await redis.hset(`eticket:${ticketId}`, 'status', 'active', 'checked_in_at', new Date().toISOString());
+    await redis.hset(
+      `eticket:${ticketId}`,
+      'status', 'active',
+      'seat_number', seatNumber,
+      'passport_number', passportNumber,
+      'checked_in_at', new Date().toISOString()
+    );
     await redis.expire(`eticket:${ticketId}`, 60 * 60 * 48); // TTL: 48h
   } catch (redisErr) {
-    // Non-fatal: Supabase is the source of truth, Redis is a cache
     console.error('[performCheckIn] Redis sync failed (non-fatal):', redisErr);
   }
 
