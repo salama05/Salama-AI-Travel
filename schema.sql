@@ -108,5 +108,24 @@ values
   ('AR-909', 'Cybernetic Air', 'DXB', 'CDG', now() + interval '4 days', now() + interval '4 days 7 hours', 710.00, 'scheduled')
 on conflict (flight_number) do update set
   departure_time = excluded.departure_time,
-  arrival_time = excluded.arrival_time,
   price = excluded.price;
+
+-- ==========================================
+-- 7. E-TICKETS SCHEMA (Boarding passes generated post-booking)
+-- ==========================================
+create table public.e_tickets (
+  id uuid default gen_random_uuid() primary key,
+  booking_id uuid references public.bookings(id) on delete cascade not null unique,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  qr_data text not null,
+  status text default 'valid' not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.e_tickets enable row level security;
+
+create policy "Users can view their own e_tickets" on public.e_tickets
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert their own e_tickets" on public.e_tickets
+  for insert with check (auth.uid() = user_id);

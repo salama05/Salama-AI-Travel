@@ -34,7 +34,8 @@ export async function bookFlight(flightId: string) {
   const bookingReference = 'BK-' + Math.random().toString(36).substring(2, 9).toUpperCase();
   const seatNumber = `${Math.floor(Math.random() * 30) + 1}${['A', 'B', 'C', 'D', 'E', 'F'][Math.floor(Math.random() * 6)]}`;
   
-  const { data, error } = await supabase
+  // 1. Create Booking
+  const { data: booking, error: bookingError } = await supabase
     .from('bookings')
     .insert({
       user_id: user.id,
@@ -46,12 +47,31 @@ export async function bookFlight(flightId: string) {
     .select()
     .single();
     
-  if (error) {
-    throw new Error(error.message);
+  if (bookingError || !booking) {
+    throw new Error(bookingError?.message || 'Failed to create booking');
+  }
+
+  // 2. Generate e-Ticket with a scannable verification URL
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  const qrData = `${appUrl}/verify/ticket/${booking.id}`;
+  
+  const { error: ticketError } = await supabase
+    .from('e_tickets')
+    .insert({
+      booking_id: booking.id,
+      user_id: user.id,
+      qr_data: qrData,
+      status: 'valid',
+    });
+
+  if (ticketError) {
+    console.error('Failed to generate e-ticket:', ticketError);
+    // Non-fatal, we still return the booking
   }
   
   revalidatePath('/bookings');
-  return data;
+  revalidatePath('/e-tickets');
+  return booking;
 }
 
 export async function getUserBookings() {
@@ -67,6 +87,33 @@ export async function getUserBookings() {
     
   if (error) {
     console.error('Error fetching bookings:', error);
+    return [];
+  }
+  
+  return data || [];
+}
+
+export async function getUserETickets() {
+  const supabase = await createClientServer();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  
+  if (authError || !user) return [];
+  
+  // Join e_tickets with bookings and flights
+  const { data, error } = await supabase
+    .from('e_tickets')
+    .select(`
+      *,
+      bookings (
+        *,
+        flights (*)
+      )
+    `)
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+    
+  if (error) {
+    console.error('Error fetching e-tickets:', error);
     return [];
   }
   

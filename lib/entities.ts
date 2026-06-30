@@ -39,6 +39,19 @@ export interface BookingEntity {
   bookedAt: string;
 }
 
+export interface ETicketEntity {
+  id: string;
+  bookingId: string;
+  userId: string;
+  qrData: string;
+  status: 'valid' | 'boarded' | 'scanned' | 'invalid';
+  createdAt: string;
+  // Included via joins for the boarding pass UI
+  bookingReference?: string;
+  seatNumber?: string | null;
+  flight?: FlightEntity;
+}
+
 export interface SupportTicketEntity {
   id: string;
   userId: string;
@@ -120,6 +133,24 @@ export function mapBooking(
     seatNumber: row.seat_number ? String(row.seat_number) : null,
     status: (row.status as BookingEntity['status']) ?? 'confirmed',
     bookedAt: String(row.created_at),
+  };
+}
+
+export function mapETicket(
+  row: Record<string, unknown>,
+  bookingRow?: Record<string, unknown>,
+  flightRow?: Record<string, unknown>
+): ETicketEntity {
+  return {
+    id: String(row.id),
+    bookingId: String(row.booking_id),
+    userId: String(row.user_id),
+    qrData: String(row.qr_data),
+    status: (row.status as ETicketEntity['status']) ?? 'valid',
+    createdAt: String(row.created_at),
+    bookingReference: bookingRow ? String(bookingRow.booking_reference) : undefined,
+    seatNumber: bookingRow?.seat_number ? String(bookingRow.seat_number) : null,
+    flight: flightRow ? mapFlight(flightRow) : undefined,
   };
 }
 

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Plane, Calendar, MessageSquare, Ticket, LogOut } from 'lucide-react';
+import { Plane, Calendar, MessageSquare, Ticket, LogOut, QrCode } from 'lucide-react';
 import { signOutAction } from '@/actions/auth';
 
 export default function Navbar({ userEmail }: { userEmail?: string | null }) {
@@ -12,6 +12,7 @@ export default function Navbar({ userEmail }: { userEmail?: string | null }) {
     { href: '/chat', label: 'AI Agent', icon: MessageSquare },
     { href: '/flights', label: 'Search Flights', icon: Plane },
     { href: '/bookings', label: 'Bookings', icon: Calendar },
+    { href: '/e-tickets', label: 'e-Tickets', icon: QrCode },
     { href: '/tickets', label: 'Support', icon: Ticket },
   ];
 
