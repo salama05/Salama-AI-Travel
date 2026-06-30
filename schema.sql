@@ -46,7 +46,7 @@ create table public.bookings (
   flight_id uuid references public.flights(id) on delete cascade not null,
   booking_reference text not null unique,
   seat_number text,
-  status text default 'confirmed' not null,
+  status text default 'pending_payment' not null,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -65,7 +65,34 @@ alter table public.bookings
   add constraint unique_flight_seat unique (flight_id, seat_number);
 
 -- ==========================================
--- 4. SUPPORT TICKETS SCHEMA (Support anomalies log)
+-- 4. PAYMENTS SCHEMA (Tracking PayTabs Transactions)
+-- ==========================================
+create table public.payments (
+  id uuid default gen_random_uuid() primary key,
+  booking_id uuid references public.bookings(id) on delete cascade not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  tran_ref text unique,
+  amount numeric not null,
+  currency text default 'AED' not null,
+  status text default 'pending' not null,
+  payment_method text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.payments enable row level security;
+
+create policy "Users can view their own payments" on public.payments
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert their own payments" on public.payments
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can update their own payments" on public.payments
+  for update using (auth.uid() = user_id);
+
+-- ==========================================
+-- 5. SUPPORT TICKETS SCHEMA (Support anomalies log)
 -- ==========================================
 create table public.support_tickets (
   id uuid default gen_random_uuid() primary key,
@@ -85,7 +112,7 @@ create policy "Users can create support tickets" on public.support_tickets
   for insert with check (auth.uid() = user_id);
 
 -- ==========================================
--- 5. PROFILE TRIGGER ON USER SIGN UP
+-- 6. PROFILE TRIGGER ON USER SIGN UP
 -- ==========================================
 create or replace function public.handle_new_user()
 returns trigger as $$
@@ -101,7 +128,7 @@ create or replace trigger on_auth_user_created
   for each row execute procedure public.handle_new_user();
 
 -- ==========================================
--- 6. SEED DUMMY DATA FOR FLIGHTS
+-- 7. SEED DUMMY DATA FOR FLIGHTS
 -- ==========================================
 insert into public.flights (flight_number, airline, departure_airport, arrival_airport, departure_time, arrival_time, price, status)
 values
@@ -116,7 +143,7 @@ on conflict (flight_number) do update set
   price = excluded.price;
 
 -- ==========================================
--- 7. E-TICKETS SCHEMA (Boarding passes generated post-booking)
+-- 8. E-TICKETS SCHEMA (Boarding passes generated post-booking)
 -- ==========================================
 create table public.e_tickets (
   id uuid default gen_random_uuid() primary key,

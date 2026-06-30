@@ -58,11 +58,13 @@ export default function FlightsPage() {
 
     setBookingStatus((prev) => ({ ...prev, [flightId]: 'booking' }));
     try {
-      await bookFlight(flightId);
-      setBookingStatus((prev) => ({ ...prev, [flightId]: 'success' }));
-      setTimeout(() => {
-        router.push('/bookings');
-      }, 1500);
+      const response = await bookFlight(flightId);
+      if (response && response.redirect_url) {
+        // Redirect to PayTabs Hosted Payment Page
+        window.location.href = response.redirect_url;
+      } else {
+        setBookingStatus((prev) => ({ ...prev, [flightId]: 'error' }));
+      }
     } catch (err) {
       console.error(err);
       setBookingStatus((prev) => ({ ...prev, [flightId]: 'error' }));

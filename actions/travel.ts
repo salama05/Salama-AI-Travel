@@ -27,6 +27,8 @@ export async function searchFlights(from: string, to: string, date?: string) {
   return data || [];
 }
 
+import { paytabs } from '@/lib/paytabs';
+
 export async function bookFlight(flightId: string) {
   const supabase = await createClientServer();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -34,19 +36,29 @@ export async function bookFlight(flightId: string) {
   if (authError || !user) {
     throw new Error('Unauthorized');
   }
+
+  // Fetch the flight to get the price
+  const { data: flight, error: flightError } = await supabase
+    .from('flights')
+    .select('*')
+    .eq('id', flightId)
+    .single();
+
+  if (flightError || !flight) {
+    throw new Error('Flight not found');
+  }
   
   const bookingReference = 'BK-' + Math.random().toString(36).substring(2, 9).toUpperCase();
-  const seatNumber = `${Math.floor(Math.random() * 30) + 1}${['A', 'B', 'C', 'D', 'E', 'F'][Math.floor(Math.random() * 6)]}`;
   
-  // 1. Create Booking
+  // 1. Create Booking (Pending Payment)
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')
     .insert({
       user_id: user.id,
       flight_id: flightId,
       booking_reference: bookingReference,
-      seat_number: seatNumber,
-      status: 'confirmed',
+      seat_number: null,
+      status: 'pending_payment',
     })
     .select()
     .single();
@@ -55,27 +67,56 @@ export async function bookFlight(flightId: string) {
     throw new Error(bookingError?.message || 'Failed to create booking');
   }
 
-  // 2. Generate e-Ticket with a scannable verification URL
+  // 2. Initialize PayTabs payment
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
-  const qrData = `${appUrl}/verify/ticket/${booking.id}`;
   
-  const { error: ticketError } = await supabase
-    .from('e_tickets')
-    .insert({
-      booking_id: booking.id,
-      user_id: user.id,
-      qr_data: qrData,
-      status: 'valid',
+  try {
+    const paymentResponse = await paytabs.initiatePayment({
+      tran_type: 'sale',
+      tran_class: 'ecom',
+      cart_id: booking.id,
+      cart_currency: 'AED',
+      cart_amount: flight.price,
+      cart_description: `Flight Booking ${bookingReference}`,
+      paypage_lang: 'en',
+      customer_details: {
+        name: user.user_metadata?.full_name || 'Guest',
+        email: user.email || 'guest@example.com',
+        street1: 'Dubai',
+        city: 'Dubai',
+        state: 'DU',
+        country: 'AE',
+        zip: '00000',
+      },
+      hide_shipping: true,
+      callback: process.env.PAYTABS_CALLBACK_URL || `${appUrl}/api/webhooks/paytabs`,
+      return: `${appUrl}/checkout/return?booking_id=${booking.id}`,
     });
 
-  if (ticketError) {
-    console.error('Failed to generate e-ticket:', ticketError);
-    // Non-fatal, we still return the booking
+    // 3. Store Payment in our DB
+    const { error: paymentError } = await supabase
+      .from('payments')
+      .insert({
+        booking_id: booking.id,
+        user_id: user.id,
+        tran_ref: paymentResponse.tran_ref,
+        amount: flight.price,
+        currency: 'AED',
+        status: 'pending',
+      });
+
+    if (paymentError) {
+      console.error('Failed to create payment record:', paymentError);
+      throw new Error('Failed to initialize payment.');
+    }
+
+    return { redirect_url: paymentResponse.redirect_url };
+  } catch (error: any) {
+    console.error('PayTabs error:', error);
+    // Rollback booking if payment fails to initialize
+    await supabase.from('bookings').delete().eq('id', booking.id);
+    throw new Error('Payment gateway error. Please try again.');
   }
-  
-  revalidatePath('/bookings');
-  revalidatePath('/e-tickets');
-  return booking;
 }
 
 export async function getUserBookings() {
