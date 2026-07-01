@@ -36,7 +36,7 @@ export default function AuthPage() {
           <Link href="/" className="inline-flex items-center gap-2 mb-2">
             <Cpu className="w-6 h-6 text-cyber-cyan animate-spin" style={{ animationDuration: '6s' }} />
             <span className="text-2xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyber-cyan to-cyber-pink">
-              AURA_TRAVEL
+              SALAMA_AI_TRAVEL
             </span>
           </Link>
           <p className="text-xs font-mono text-foreground/60 uppercase tracking-widest">

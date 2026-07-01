@@ -84,7 +84,7 @@ export default async function Home() {
 
       <footer className="border-t border-cyber-purple/10 bg-cyber-black/90 py-6 relative z-10">
         <div className="max-w-7xl mx-auto px-4 text-center font-mono text-xs text-foreground/45">
-          &copy; 2026 AURA TRAVEL INC. ALL DATA PROTOCOLS SECURED.
+          &copy; 2026 SALAMA AI TRAVEL INC. ALL DATA PROTOCOLS SECURED.
         </div>
       </footer>
     </div>

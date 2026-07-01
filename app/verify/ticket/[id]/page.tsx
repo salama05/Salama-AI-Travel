@@ -96,7 +96,7 @@ function VerifyLayout({ children }: { children: React.ReactNode }) {
         {/* Brand mark */}
         <div className="text-center mb-8">
           <span className="text-2xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyber-cyan to-cyber-pink">
-            AURA_TRAVEL
+            SALAMA_AI_TRAVEL
           </span>
           <p className="text-xs font-mono text-muted-foreground mt-1 tracking-widest uppercase">
             Gate Verification System

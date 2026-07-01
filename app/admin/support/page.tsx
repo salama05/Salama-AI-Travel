@@ -17,7 +17,7 @@ import Navbar from '@/components/navbar';
 import { ShieldCheck, AlertTriangle } from 'lucide-react';
 
 export const metadata = {
-  title: 'Admin — Support Dashboard | AURA Travel',
+  title: 'Admin — Support Dashboard | Salama AI Travel',
   description: 'Internal admin console for managing all support tickets.',
   // Instruct crawlers to never index this admin page
   robots: 'noindex, nofollow',
@@ -103,7 +103,7 @@ export default async function AdminSupportPage() {
       {/* Footer */}
       <footer className="border-t border-cyber-cyan/10 py-4">
         <p className="text-center text-[10px] font-mono text-foreground/20 uppercase tracking-widest">
-          AURA_TRAVEL · ADMIN_CONSOLE · RESTRICTED_ACCESS
+          SALAMA_AI_TRAVEL · ADMIN_CONSOLE · RESTRICTED_ACCESS
         </p>
       </footer>
     </div>

@@ -34,7 +34,7 @@ interface Message {
 
 // ─── Generate a stable sessionId per user (persisted in localStorage) ─────────
 function getOrCreateSessionId(userId: string): string {
-  const key = `aura_session_${userId}`;
+  const key = `salama_session_${userId}`;
   if (typeof window === 'undefined') return `session-${userId}`;
   const existing = localStorage.getItem(key);
   // Redis Agent Memory requires strictly alphanumeric and hyphens. 
@@ -54,7 +54,7 @@ export default function ChatPage() {
     {
       id: 'welcome',
       sender: 'agent',
-      text: 'AURA AI TRAVEL AGENT ONLINE — Powered by Redis Cloud AI.\nAsk me about flights, your bookings, or travel support.',
+      text: 'SALAMA AI TRAVEL AGENT ONLINE — Powered by Redis Cloud AI.\nAsk me about flights, your bookings, or travel support.',
       timestamp: new Date(),
     },
   ]);
@@ -321,7 +321,7 @@ export default function ChatPage() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask AURA anything about your flights..."
+                placeholder="Ask SALAMA anything about your flights..."
                 className="flex-1 px-4 py-3.5 bg-cyber-black border border-cyber-cyan/20 focus:border-cyber-cyan focus:ring-1 focus:ring-cyber-cyan/50 rounded text-sm font-mono placeholder-foreground/20 text-foreground transition-all outline-none"
               />
               <button

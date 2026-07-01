@@ -23,7 +23,7 @@ export default function Navbar({ userEmail }: { userEmail?: string | null }) {
           <div className="flex items-center">
             <Link href="/" className="flex items-center gap-2">
               <span className="text-xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyber-cyan to-cyber-pink text-glow-cyan">
-                AURA_TRAVEL
+                SALAMA_AI_TRAVEL
               </span>
               <span className="text-[10px] font-mono text-cyber-cyan border border-cyber-cyan/30 px-1 py-0.5 rounded uppercase tracking-widest bg-cyber-cyan/5">
                 v1.0

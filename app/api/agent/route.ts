@@ -50,7 +50,7 @@ import { Part, Content } from '@google/generative-ai';
 // ─── System prompt ────────────────────────────────────────────────────────────
 
 function buildSystemPrompt(memoryBlock: string): string {
-  return `You are AURA, an intelligent AI Travel Agent for a flight booking platform.
+  return `You are SALAMA, an intelligent AI Travel Agent for a flight booking platform.
 
 CRITICAL RULES — you MUST follow these at all times:
 1. When answering questions about flights, ONLY cite flights from your tool results.
